@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>오늘의 할일</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <div class="header-title-row">
+        <h1 class="app-title">오늘의 할일</h1>
+        <div class="view-toggle" role="group" aria-label="보기 방식">
+          <button type="button" class="view-toggle-btn is-active" id="btnViewList" aria-pressed="true">리스트로 보기</button>
+          <button type="button" class="view-toggle-btn" id="btnViewCalendar" aria-pressed="false">달력 형으로 보기</button>
+        </div>
+      </div>
+      <div class="header-date-row">
+        <span class="header-date-label">날짜 선택</span>
+        <div class="header-date-controls">
+          <button type="button" class="header-date-nav-btn" id="datePrevMonth" aria-label="이전 달">
+            <span class="header-date-nav-icon" aria-hidden="true">←</span>
+          </button>
+          <input type="date" class="header-date-input" id="listDatePicker" aria-label="날짜 선택" />
+          <button type="button" class="header-date-nav-btn" id="dateNextMonth" aria-label="다음 달">
+            <span class="header-date-nav-icon" aria-hidden="true">→</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="main">
+      <div class="toolbar">
+        <button type="button" class="btn btn-primary" id="btnAddTodo">새로운 할일 추가</button>
+      </div>
+
+      <section class="list-section" id="listPanel" aria-labelledby="allTodosHeading">
+        <h2 id="allTodosHeading" class="section-title">모든 할일</h2>
+        <ul class="todo-list" id="todoList"></ul>
+        <p class="empty-hint" id="emptyHint" hidden>선택한 날짜에 예정된 할일이 없습니다. 새로운 할일을 추가해 보세요.</p>
+      </section>
+
+      <section class="calendar-section" id="calendarPanel" aria-label="달력 보기" hidden>
+        <div class="calendar-nav">
+          <button type="button" class="btn btn-ghost btn-cal-nav" id="calPrev">이전 달</button>
+          <h2 class="calendar-month-title" id="calMonthTitle"></h2>
+          <button type="button" class="btn btn-ghost btn-cal-nav" id="calNext">다음 달</button>
+        </div>
+        <div class="calendar-weekdays" id="calWeekdays"></div>
+        <div class="calendar-grid" id="calendarGrid"></div>
+      </section>
+    </main>
+  </div>
+
+  <!-- 추가 모달 -->
+  <div class="modal-backdrop" id="addModalBackdrop" hidden></div>
+  <div class="modal" id="addModal" role="dialog" aria-modal="true" aria-labelledby="addModalTitle" hidden>
+    <div class="modal-card">
+      <h2 id="addModalTitle" class="modal-title">할일 추가</h2>
+      <form id="addForm" class="modal-form">
+        <label class="field">
+          <span class="field-label">제목</span>
+          <input type="text" id="addTitle" name="title" required maxlength="120" />
+        </label>
+        <label class="field">
+          <span class="field-label">상세 내용</span>
+          <textarea id="addDetail" name="detail" rows="4" maxlength="2000"></textarea>
+        </label>
+        <label class="field">
+          <span class="field-label">날짜</span>
+          <input type="date" id="addDate" name="date" required />
+        </label>
+        <fieldset class="field importance-field">
+          <legend class="field-label">유형</legend>
+          <label class="radio-row">
+            <input type="radio" name="importance" value="normal" checked />
+            <span>일반</span>
+          </label>
+          <label class="radio-row">
+            <input type="radio" name="importance" value="important" />
+            <span>중요</span>
+          </label>
+        </fieldset>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" id="addCancel">취소</button>
+          <button type="submit" class="btn btn-primary">저장</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 상세 / 편집 모달 -->
+  <div class="modal-backdrop" id="detailModalBackdrop" hidden></div>
+  <div class="modal" id="detailModal" role="dialog" aria-modal="true" aria-labelledby="detailModalTitle" hidden>
+    <div class="modal-card modal-card-wide">
+      <h2 id="detailModalTitle" class="modal-title">할일 상세</h2>
+      <div id="detailViewMode">
+        <dl class="detail-dl">
+          <dt>제목</dt>
+          <dd id="detailViewTitle"></dd>
+          <dt>상세 내용</dt>
+          <dd id="detailViewBody" class="detail-body"></dd>
+          <dt>날짜</dt>
+          <dd id="detailViewDate"></dd>
+          <dt>유형</dt>
+          <dd id="detailViewImportance"></dd>
+        </dl>
+        <div class="modal-actions modal-actions-split">
+          <button type="button" class="btn btn-ghost" id="detailClose">닫기</button>
+          <div class="detail-btns">
+            <button type="button" class="btn btn-secondary" id="detailEdit">편집</button>
+            <button type="button" class="btn btn-success" id="detailMarkDone">완료</button>
+            <button type="button" class="btn btn-warn" id="detailMarkUndone">미완료</button>
+          </div>
+        </div>
+      </div>
+      <form id="detailEditForm" class="modal-form" hidden>
+        <label class="field">
+          <span class="field-label">제목</span>
+          <input type="text" id="editTitle" maxlength="120" required />
+        </label>
+        <label class="field">
+          <span class="field-label">상세 내용</span>
+          <textarea id="editDetail" rows="4" maxlength="2000"></textarea>
+        </label>
+        <label class="field">
+          <span class="field-label">날짜</span>
+          <input type="date" id="editDate" required />
+        </label>
+        <fieldset class="field importance-field">
+          <legend class="field-label">유형</legend>
+          <label class="radio-row">
+            <input type="radio" name="editImportance" value="normal" />
+            <span>일반</span>
+          </label>
+          <label class="radio-row">
+            <input type="radio" name="editImportance" value="important" />
+            <span>중요</span>
+          </label>
+        </fieldset>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" id="editCancel">취소</button>
+          <button type="submit" class="btn btn-primary">저장</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 삭제 확인 -->
+  <div class="modal-backdrop" id="deleteModalBackdrop" hidden></div>
+  <div class="modal" id="deleteModal" role="dialog" aria-modal="true" aria-labelledby="deleteModalTitle" hidden>
+    <div class="modal-card modal-card-narrow">
+      <h2 id="deleteModalTitle" class="modal-title">삭제 확인</h2>
+      <p class="confirm-text">할일을 삭제 하겠습니까?</p>
+      <div class="modal-actions confirm-actions">
+        <button type="button" class="btn btn-ghost" id="deleteNo">아니오</button>
+        <button type="button" class="btn btn-danger" id="deleteYes">예</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
