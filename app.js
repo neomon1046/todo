@@ -1,8 +1,6 @@
 (function () {
   "use strict";
 
-  const STORAGE_KEY = "todayTodos.v1";
-
   /** @returns {string} YYYY-MM-DD in local timezone */
   function todayISO() {
     const d = new Date();
@@ -41,21 +39,6 @@
       day: "numeric",
       weekday: "short",
     });
-  }
-
-  function loadTodos() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return [];
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  }
-
-  function saveTodos(todos) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
   }
 
   function uid() {
@@ -147,7 +130,7 @@
   const deleteYes = document.getElementById("deleteYes");
   const deleteNo = document.getElementById("deleteNo");
 
-  let todos = loadTodos();
+  let todos = [];
   let selectedId = null;
   let deleteTargetId = null;
 
@@ -156,7 +139,28 @@
   let calYear = new Date().getFullYear();
   let calMonth = new Date().getMonth();
 
+  function isValidISODate(s) {
+    if (typeof s !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+    const [y, m, d] = s.split("-").map(Number);
+    const dt = new Date(y, m - 1, d);
+    return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d;
+  }
+
+  function normalizeSelectedListDate() {
+    if (!isValidISODate(selectedListDate)) {
+      selectedListDate = todayISO();
+    }
+  }
+
+  function syncListDatePickerFromState() {
+    normalizeSelectedListDate();
+    if (listDatePicker) {
+      listDatePicker.value = selectedListDate;
+    }
+  }
+
   function syncCalMonthFromSelectedDate() {
+    normalizeSelectedListDate();
     const { y, m } = parseISO(selectedListDate);
     calYear = y;
     calMonth = m;
@@ -196,10 +200,10 @@
   function openAddModal(dateIso) {
     addTitle.value = "";
     addDetail.value = "";
-    if (dateIso) {
+    if (dateIso && isValidISODate(dateIso)) {
       addDate.value = dateIso;
       selectedListDate = dateIso;
-      listDatePicker.value = dateIso;
+      syncListDatePickerFromState();
     } else {
       addDate.value = selectedListDate;
     }
@@ -300,7 +304,6 @@
       btnDone.addEventListener("click", (e) => {
         e.stopPropagation();
         todo.completed = !todo.completed;
-        saveTodos(todos);
         render();
       });
 
@@ -394,9 +397,7 @@
   }
 
   function render() {
-    if (listDatePicker.value !== selectedListDate) {
-      listDatePicker.value = selectedListDate;
-    }
+    syncListDatePickerFromState();
 
     if (viewMode === "list") {
       renderList();
@@ -412,14 +413,16 @@
   }
 
   listDatePicker.addEventListener("change", () => {
-    selectedListDate = listDatePicker.value || todayISO();
+    const v = listDatePicker.value;
+    selectedListDate = isValidISODate(v) ? v : todayISO();
     syncCalMonthFromSelectedDate();
     render();
   });
 
   function shiftSelectedDay(delta) {
+    normalizeSelectedListDate();
     selectedListDate = addDaysToISO(selectedListDate, delta);
-    listDatePicker.value = selectedListDate;
+    syncListDatePickerFromState();
     syncCalMonthFromSelectedDate();
     render();
   }
@@ -477,7 +480,6 @@
     };
     if (!item.title) return;
     todos.push(item);
-    saveTodos(todos);
     closeModal(addModalBackdrop, addModal);
     render();
   });
@@ -501,7 +503,6 @@
     const todo = todos.find((x) => x.id === selectedId);
     if (todo && !todo.completed) {
       todo.completed = true;
-      saveTodos(todos);
       render();
       openDetailModal(selectedId);
     }
@@ -511,7 +512,6 @@
     const todo = todos.find((x) => x.id === selectedId);
     if (todo && todo.completed) {
       todo.completed = false;
-      saveTodos(todos);
       render();
       openDetailModal(selectedId);
     }
@@ -527,7 +527,6 @@
     const imp = detailEditForm.querySelector('input[name="editImportance"]:checked');
     todo.important = Boolean(imp && imp.value === "important");
     if (!todo.title) return;
-    saveTodos(todos);
     render();
     showDetailView();
     detailViewTitle.textContent = todo.title;
@@ -557,7 +556,6 @@
     const id = deleteTargetId;
     if (id) {
       todos = todos.filter((x) => x.id !== id);
-      saveTodos(todos);
       render();
       if (selectedId === id) {
         closeModal(detailModalBackdrop, detailModal);
@@ -579,7 +577,7 @@
     } else if (!deleteModal.hidden) closeDeleteConfirm();
   });
 
-  listDatePicker.value = selectedListDate;
+  syncListDatePickerFromState();
   setViewMode("list");
   render();
 })();
